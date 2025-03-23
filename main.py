@@ -1,32 +1,36 @@
 import torch
 from math import dist
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
 import numpy as np
 from transformers import AutoTokenizer, AutoModel
-from huggingface_hub import snapshot_download
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+import plotly.io as pio
+
 
 # Check if GPU is available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# Load model and tokenizer
-model_name = "mistralai/Mistral-7B-v0.1"  # or "mistralai/Mistral-7B-Instruct-v0.2" print("grabbing tokenizer")
-cache_dir = "./model_cache"
-snapshot_download(model_name, cache_dir=cache_dir)
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-print("grabbing model")
-model = AutoModel.from_pretrained(cache_dir, device_map="auto", torch_dtype=torch.float16)
-print("evaluating model")
-model.eval()  # Disable dropout for consistency
+def init():
+    global model, model_name, tokenizer, embeddings # This is bad Style, but I like to get things DONE
 
-# Extract embeddings (first "layer" - the input token embeddings)
-print("grabbing embeddings")
-# The correct way to access the embeddings in newer versions
-embeddings = model.get_input_embeddings().weight.data.cpu().numpy()
-print(embeddings)
+    # Load model and tokenizer
+    model_name = "mistralai/Mistral-7B-v0.1"  # or "mistralai/Mistral-7B-Instruct-v0.2" print("grabbing tokenizer")
 
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print("grabbing model")
+    model = AutoModel.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
+    print("evaluating model")
+    model.eval()  # Disable dropout for consistency
+
+    # Extract embeddings (first "layer" - the input token embeddings)
+    print("grabbing embeddings")
+    # The correct way to access the embeddings in newer versions
+    embeddings = model.get_input_embeddings().weight.data.cpu().numpy()
+    print(embeddings)
 
 def get_token_embedding(token_text):
     # Tokenize the input text (this returns a list of token IDs)
@@ -88,7 +92,7 @@ def find_nearest_tokens(embedding_point, top_k=5):
 
 
 def create_pca_graph(embeddings_list, words=None, title="PCA of Word Embeddings",
-                     mode='2d', width=1000, height=800):
+                     mode='3d', width=1000, height=800):
     """
     Create an interactive PCA visualization of word embeddings using Plotly.
 
@@ -103,10 +107,6 @@ def create_pca_graph(embeddings_list, words=None, title="PCA of Word Embeddings"
     Returns:
         Plotly figure object
     """
-    import plotly.graph_objects as go
-    import plotly.express as px
-    import pandas as pd
-
     # Convert list of embeddings to a 2D numpy array
     embeddings_array = np.array(embeddings_list)
 
@@ -193,9 +193,6 @@ def create_pca_graph(embeddings_list, words=None, title="PCA of Word Embeddings"
 
 
 def main():
-    # Import necessary packages for Plotly
-    import plotly.io as pio
-
     # Set default renderer for Plotly (use 'browser' to open in a web browser)
     pio.renderers.default = 'browser'  # or 'notebook' if using Jupyter
 
@@ -221,20 +218,6 @@ def main():
 
     print(f"Created embeddings for {len(feelings_embedded)} words")
 
-    # Create and display the interactive PCA visualization (2D)
-    fig_2d = create_pca_graph(
-        feelings_embedded,
-        words,
-        title="2D PCA of Emotional Words",
-        mode='2d'
-    )
-
-    # Save as HTML for easy sharing
-    fig_2d.write_html("emotional_words_pca_2d.html")
-
-    # Display the visualization (this will open in a browser or notebook)
-    fig_2d.show()
-
     # Create and display 3D visualization
     fig_3d = create_pca_graph(
         feelings_embedded,
@@ -251,7 +234,7 @@ def main():
 
     # Optional: still print some information about similar words
     print("\nSome examples of similar emotional words:")
-    for i, word in enumerate(words[:3]):  # Just show a few examples
+    for i, word in enumerate(words[:3]):
         print(f"\nWords most similar to '{word}':")
         nearest = find_nearest_tokens(feelings_embedded[i], top_k=5)
         for nearby_word, distance in nearest:
