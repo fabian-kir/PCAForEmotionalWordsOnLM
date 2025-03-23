@@ -1,29 +1,30 @@
 import torch
 from math import dist
-from transformers import RobertaTokenizer, RobertaModel
-# using roberta because most tokens have a lot more meaning
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import numpy as np
+from transformers import AutoTokenizer, AutoModel
+from huggingface_hub import snapshot_download
 
 # Check if GPU is available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # Load model and tokenizer
-model_name = "gpt2"  # Use "gpt2" for the larger variant
-print("grabbing tokenizer")
-tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+model_name = "mistralai/Mistral-7B-v0.1"  # or "mistralai/Mistral-7B-Instruct-v0.2" print("grabbing tokenizer")
+cache_dir = "./model_cache"
+snapshot_download(model_name, cache_dir=cache_dir)
 
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 print("grabbing model")
-model = RobertaModel.from_pretrained("roberta-base")
+model = AutoModel.from_pretrained(cache_dir, device_map="auto", torch_dtype=torch.float16)
 print("evaluating model")
 model.eval()  # Disable dropout for consistency
 
 # Extract embeddings (first "layer" - the input token embeddings)
 print("grabbing embeddings")
 # The correct way to access the embeddings in newer versions
-embeddings = model.embeddings.word_embeddings.weight.data.cpu().numpy()
+embeddings = model.get_input_embeddings().weight.data.cpu().numpy()
 print(embeddings)
 
 
