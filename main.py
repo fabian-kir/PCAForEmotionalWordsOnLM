@@ -193,6 +193,8 @@ def create_pca_graph(embeddings_list, words=None, title="PCA of Word Embeddings"
 
 
 def main():
+    init()
+
     # Set default renderer for Plotly (use 'browser' to open in a web browser)
     pio.renderers.default = 'browser'  # or 'notebook' if using Jupyter
 
